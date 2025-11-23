@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,6 +9,7 @@ import {
   Image,
   Modal,
   TextInput,
+  Animated,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,6 +26,8 @@ import {
   X,
   Calendar,
   Circle,
+  ImageIcon,
+  Eye,
 } from "lucide-react-native";
 import {
   useFonts,
@@ -32,7 +36,6 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
-import { useState } from "react";
 import { useTheme } from "@/utils/theme";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -51,6 +54,10 @@ import {
   saveActivity,
 } from "@/utils/storage";
 import { scheduleHarshReminder, scheduleGoalDeadlineReminder } from "@/utils/notifications";
+import { generateDailyQuote } from "@/utils/ai";
+import { addWinEvidence, getEvidenceCount } from "@/utils/winTracker";
+import { WinTimeline } from "@/components/WinTimeline";
+import { useFadeIn } from "@/utils/animations";
 
 export default function WinterArcDashboard() {
   const insets = useSafeAreaInsets();
@@ -59,6 +66,8 @@ export default function WinterArcDashboard() {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const [showAddGoalModal, setShowAddGoalModal] = useState(false);
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
+  const [selectedGoalForTimeline, setSelectedGoalForTimeline] = useState(null);
   const [newGoal, setNewGoal] = useState({
     title: "",
     description: "",
@@ -66,6 +75,7 @@ export default function WinterArcDashboard() {
     why: "",
   });
   const [streakImage, setStreakImage] = useState(null);
+  const [evidenceCounts, setEvidenceCounts] = useState({});
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -94,58 +104,27 @@ export default function WinterArcDashboard() {
     staleTime: 1000 * 60 * 5,
   });
 
-  // Generate movie-inspired quote based on user's favorite movies - changes daily
-  const getMovieQuote = () => {
-    const movieQuotes = {
-      "rocky": [
-        "It ain't about how hard you hit. It's about how hard you can get hit and keep moving forward.",
-        "Every champion was once a contender who refused to give up.",
-        "Going in one more round when you don't think you can - that's what makes all the difference.",
-      ],
-      "pursuit of happyness": [
-        "Don't ever let somebody tell you you can't do something. You got a dream, you gotta protect it.",
-        "You want something, go get it. Period.",
-      ],
-      "warrior": [
-        "You were always going to win this fight. The question is, are you gonna be standing when it's over?",
-        "I only got tonight to do this, so I will.",
-      ],
-      "david goggins": [
-        "The only person who was going to turn my life around was me.",
-        "Suffering is a test. That's all it is. Pain is the price of being alive.",
-        "You are in danger of living a life so comfortable that you will die without ever realizing your true potential.",
-      ],
-      "kobe bryant": [
-        "The moment you give up is the moment you let someone else win.",
-        "Everything negative - pressure, challenges - is all an opportunity for me to rise.",
-      ],
-    };
-
-    const inspirations = (onboardingData?.inspiringMovies || "") + " " + (onboardingData?.roleModels || "");
-    const lowerInspiration = inspirations.toLowerCase();
-    
-    let relevantQuotes = [];
-    Object.keys(movieQuotes).forEach(key => {
-      if (lowerInspiration.includes(key)) {
-        relevantQuotes = [...relevantQuotes, ...movieQuotes[key]];
-      }
-    });
-
-    if (relevantQuotes.length === 0) {
-      relevantQuotes = [
-        "The only way to do great work is to love what you do.",
-        "Don't watch the clock; do what it does. Keep going.",
-        "The secret of getting ahead is getting started.",
-      ];
-    }
-
-    // Use today's date as seed for consistent daily quote
-    const today = new Date();
-    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
-    const quoteIndex = dayOfYear % relevantQuotes.length;
-    
-    return relevantQuotes[quoteIndex];
-  };
+  // Fetch daily motivational quote from AI based on user's movies/role models
+  const { data: dailyQuote = "Your journey begins now. Make it count." } = useQuery({
+    queryKey: ["daily-quote", onboardingData?.inspiringMovies, onboardingData?.roleModels],
+    queryFn: async () => {
+      if (!onboardingData) return "Your journey begins now. Make it count.";
+      
+      const userProfile = {
+        biggestDream: onboardingData.biggestDream || "",
+        biggestSetback: onboardingData.biggestSetback || "",
+        emotionalBreakdown: onboardingData.emotionalBreakdown || "",
+        whatKeepsGoing: onboardingData.whatKeepsGoing || "",
+        inspiringMovies: onboardingData.inspiringMovies || "",
+        roleModels: onboardingData.roleModels || "",
+      };
+      
+      return await generateDailyQuote(userProfile);
+    },
+    retry: false,
+    staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours (quote changes daily)
+    enabled: !!onboardingData,
+  });
 
   // Fetch daily check-in status
   const { data: checkInData, refetch: refetchCheckIn } = useQuery({
@@ -243,9 +222,7 @@ export default function WinterArcDashboard() {
   };
 
   const handleWinterArcSpark = () => {
-    const quote = getMovieQuote();
-    
-    Alert.alert("Winter Arc Reality Check", quote, [
+    Alert.alert("Winter Arc Reality Check", dailyQuote, [
       {
         text: "I hear you",
         style: "default",
@@ -299,6 +276,70 @@ export default function WinterArcDashboard() {
     }
   };
 
+  // Handle adding win evidence to a goal
+  const handleAddWinEvidence = async (goalId) => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        Alert.alert("Permission Required", "Please allow access to your photos.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        
+        // Optionally ask for a note
+        Alert.prompt(
+          "Add a Note",
+          "Describe this win (optional):",
+          async (note) => {
+            await addWinEvidence(goalId, imageUri, note || '');
+            
+            // Update evidence counts
+            const count = await getEvidenceCount(goalId);
+            setEvidenceCounts(prev => ({ ...prev, [goalId]: count }));
+            
+            Alert.alert("Win Recorded!", "Your progress is documented. Keep pushing.");
+          },
+          "plain-text"
+        );
+      }
+    } catch (error) {
+      console.error("Evidence upload error:", error);
+      Alert.alert("Error", "Failed to upload evidence. Try again.");
+    }
+  };
+
+  // View timeline for a goal
+  const handleViewTimeline = (goalId) => {
+    setSelectedGoalForTimeline(goalId);
+    setShowTimelineModal(true);
+  };
+
+  // Load evidence counts for all goals
+  const loadEvidenceCounts = async () => {
+    const counts = {};
+    for (const goal of goals) {
+      const count = await getEvidenceCount(goal.id);
+      counts[goal.id] = count;
+    }
+    setEvidenceCounts(counts);
+  };
+
+  // Load evidence counts when goals change
+  useEffect(() => {
+    if (goals.length > 0) {
+      loadEvidenceCounts();
+    }
+  }, [goals]);
+
   if (!fontsLoaded) {
     return null;
   }
@@ -349,7 +390,7 @@ export default function WinterArcDashboard() {
             Time to get serious about your goals.{"\n"}No excuses. No shortcuts.
           </Text>
           <TouchableOpacity
-            onPress={() => console.log("Navigate to onboarding")}
+            onPress={() => router.push("/onboarding")}
             style={{
               backgroundColor: colors.primary,
               borderRadius: 8,
@@ -487,7 +528,7 @@ export default function WinterArcDashboard() {
                 fontStyle: "italic",
               }}
             >
-              "{getMovieQuote()}"
+              "{dailyQuote}"
             </Text>
           </View>
         </View>
@@ -511,7 +552,7 @@ export default function WinterArcDashboard() {
                 marginBottom: 16,
               }}
             >
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text
                   style={{
                     color: colors.textSecondary,
@@ -522,32 +563,45 @@ export default function WinterArcDashboard() {
                 >
                   Current Streak
                 </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "baseline",
-                  }}
-                >
-                  <Text
+                {currentStreak > 0 ? (
+                  <View
                     style={{
-                      color: colors.primary,
-                      fontSize: 48,
-                      fontFamily: "Inter_700Bold",
+                      flexDirection: "row",
+                      alignItems: "baseline",
                     }}
                   >
-                    {currentStreak}
-                  </Text>
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 48,
+                        fontFamily: "Inter_700Bold",
+                      }}
+                    >
+                      {currentStreak}
+                    </Text>
+                    <Text
+                      style={{
+                        color: colors.textPrimary,
+                        fontSize: 18,
+                        fontFamily: "Inter_500Medium",
+                        marginLeft: 8,
+                      }}
+                    >
+                      {currentStreak === 1 ? "day" : "days"}
+                    </Text>
+                  </View>
+                ) : (
                   <Text
                     style={{
                       color: colors.textSecondary,
-                      fontSize: 18,
-                      fontFamily: "Inter_500Medium",
-                      marginLeft: 8,
+                      fontSize: 20,
+                      fontFamily: "Inter_600SemiBold",
+                      marginTop: 8,
                     }}
                   >
-                    days
+                    Not started
                   </Text>
-                </View>
+                )}
               </View>
 
               <TouchableOpacity
@@ -801,12 +855,12 @@ export default function WinterArcDashboard() {
                           color: colors.textPrimary,
                           fontSize: 16,
                           fontFamily: "Inter_600SemiBold",
-                          marginBottom: 4,
+                          marginBottom: goal.description || goal.why ? 4 : 0,
                         }}
                       >
                         {goal.title}
                       </Text>
-                      {goal.description && (
+                      {goal.description && goal.description.trim() !== "" && (
                         <Text
                           style={{
                             color: colors.textSecondary,
@@ -818,13 +872,15 @@ export default function WinterArcDashboard() {
                           {goal.description}
                         </Text>
                       )}
-                      {goal.why && (
+                      {goal.why && goal.why.trim() !== "" && (
                         <View
                           style={{
                             backgroundColor: colors.surface,
                             borderRadius: 8,
                             padding: 10,
                             marginBottom: 8,
+                            borderLeftWidth: 2,
+                            borderLeftColor: colors.primary,
                           }}
                         >
                           <Text
@@ -832,10 +888,9 @@ export default function WinterArcDashboard() {
                               color: colors.textSecondary,
                               fontSize: 12,
                               fontFamily: "Inter_400Regular",
-                              fontStyle: "italic",
                             }}
                           >
-                            "{goal.why}"
+                            Why: {goal.why}
                           </Text>
                         </View>
                       )}
@@ -893,18 +948,21 @@ export default function WinterArcDashboard() {
                     </View>
                     <View
                       style={{
-                        height: 6,
+                        height: 8,
                         backgroundColor: colors.surface,
-                        borderRadius: 3,
+                        borderRadius: 4,
                         overflow: "hidden",
+                        borderWidth: 1,
+                        borderColor: colors.border,
                       }}
                     >
                       <View
                         style={{
                           height: "100%",
-                          width: `${goal.progress || 0}%`,
+                          width: `${Math.max(goal.progress || 0, 0)}%`,
                           backgroundColor: colors.primary,
                           borderRadius: 3,
+                          minWidth: goal.progress > 0 ? 4 : 0,
                         }}
                       />
                     </View>
@@ -916,6 +974,7 @@ export default function WinterArcDashboard() {
                       style={{
                         flexDirection: "row",
                         alignItems: "center",
+                        marginBottom: 12,
                       }}
                     >
                       <Calendar size={12} color={colors.textSecondary} />
@@ -931,6 +990,68 @@ export default function WinterArcDashboard() {
                       </Text>
                     </View>
                   )}
+
+                  {/* Win Tracker Actions */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      gap: 8,
+                      marginTop: 12,
+                      paddingTop: 12,
+                      borderTopWidth: 1,
+                      borderTopColor: colors.border,
+                    }}
+                  >
+                    <TouchableOpacity
+                      onPress={() => handleAddWinEvidence(goal.id)}
+                      style={{
+                        flex: 1,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: colors.surface,
+                        borderRadius: 8,
+                        paddingVertical: 10,
+                        gap: 6,
+                      }}
+                    >
+                      <ImageIcon size={16} color={colors.textPrimary} />
+                      <Text
+                        style={{
+                          color: colors.textPrimary,
+                          fontSize: 13,
+                          fontFamily: "Inter_500Medium",
+                        }}
+                      >
+                        Add Win
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => handleViewTimeline(goal.id)}
+                      style={{
+                        flex: 1,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: colors.surface,
+                        borderRadius: 8,
+                        paddingVertical: 10,
+                        gap: 6,
+                      }}
+                    >
+                      <Eye size={16} color={colors.textPrimary} />
+                      <Text
+                        style={{
+                          color: colors.textPrimary,
+                          fontSize: 13,
+                          fontFamily: "Inter_500Medium",
+                        }}
+                      >
+                        Timeline {evidenceCounts[goal.id] > 0 ? `(${evidenceCounts[goal.id]})` : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ))}
             </View>
@@ -1261,6 +1382,24 @@ export default function WinterArcDashboard() {
             </TouchableOpacity>
           </ScrollView>
         </View>
+      </Modal>
+
+      {/* Win Timeline Modal */}
+      <Modal
+        visible={showTimelineModal}
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
+        <WinTimeline
+          goalId={selectedGoalForTimeline}
+          onClose={() => {
+            setShowTimelineModal(false);
+            setSelectedGoalForTimeline(null);
+          }}
+          onRefresh={() => {
+            loadEvidenceCounts();
+          }}
+        />
       </Modal>
     </View>
   );

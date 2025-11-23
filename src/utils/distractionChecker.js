@@ -1,4 +1,6 @@
 import { Alert } from "react-native";
+import { trackDistractionEvent, updatePatternNudges } from "./patternAnalytics";
+import { updatePatternNudges as updateNotificationNudges } from "./notifications";
 
 class DistractionChecker {
   constructor() {
@@ -121,7 +123,22 @@ class DistractionChecker {
 
   handleBackOnTrack() {
     console.log("Winter Arc: User back on track");
-    // Could log this as a positive interaction
+    // Reset distraction timer
+    this.distractionStartTime = null;
+  }
+
+  // Track distraction event with pattern analytics
+  async trackDistraction(appName, durationMinutes) {
+    try {
+      await trackDistractionEvent(appName, durationMinutes);
+      
+      // Update notification patterns based on new data
+      await updateNotificationNudges();
+      
+      console.log(`Distraction tracked: ${appName} for ${durationMinutes} minutes`);
+    } catch (error) {
+      console.error("Failed to track distraction:", error);
+    }
   }
 
   // Check for missed daily check-ins

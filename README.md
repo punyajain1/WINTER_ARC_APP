@@ -166,10 +166,14 @@ ai-backend/
 
 Create `.env` in `apps/mobile`:
 ```
+# For local development (if running backend locally):
 EXPO_PUBLIC_AI_BACKEND_URL=http://localhost:3000
+
+# For production (using deployed Railway backend):
+EXPO_PUBLIC_AI_BACKEND_URL=https://winarcbe-production.up.railway.app
 ```
 
-For production, change to your deployed backend URL.
+**Note**: The app works offline with fallback quotes. AI features are optional.
 
 ## 🐛 Known Issues
 

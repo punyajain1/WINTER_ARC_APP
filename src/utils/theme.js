@@ -6,20 +6,20 @@ export const useTheme = () => {
   const isDark = colorScheme === "dark";
 
   const colors = {
-    // Core Winter Arc colors - pure minimalism
-    background: isDark ? "#000000" : "#FFFFFF",
-    surface: isDark ? "#111111" : "#F8F9FA",
-    cardBackground: isDark ? "#111111" : "#FFFFFF",
+    // Core Winter Arc colors - cozy dark minimalism
+    background: isDark ? "#0A0A0A" : "#FAFAFA",
+    surface: isDark ? "#141414" : "#F8F9FA",
+    cardBackground: isDark ? "#1A1A1A" : "#FFFFFF",
 
-    // Text - harsh but readable
-    textPrimary: isDark ? "#FFFFFF" : "#000000",
-    textSecondary: isDark ? "#888888" : "#666666",
-    textTertiary: isDark ? "#555555" : "#999999",
+    // Text - cozy but sharp
+    textPrimary: isDark ? "#F5F5F5" : "#0A0A0A",
+    textSecondary: isDark ? "#A0A0A0" : "#666666",
+    textTertiary: isDark ? "#606060" : "#999999",
 
-    // Winter Arc accent - pure black for focus
-    primary: "#000000",
+    // Winter Arc accent - deep black for focus
+    primary: isDark ? "#1A1A1A" : "#000000",
     primaryText: "#FFFFFF",
-    secondary: isDark ? "#333333" : "#E5E7EB",
+    secondary: isDark ? "#2A2A2A" : "#E5E7EB",
 
     // Status colors - minimal but clear
     success: "#22C55E",
@@ -27,31 +27,31 @@ export const useTheme = () => {
     danger: "#EF4444",
     error: "#EF4444",
 
-    // Borders and structure
-    border: isDark ? "#222222" : "#E5E7EB",
-    cardShadow: isDark ? "#000000" : "#000000",
-    cardBorder: isDark ? "#222222" : "#E5E7EB",
+    // Borders and structure - softer edges
+    border: isDark ? "#2A2A2A" : "#E5E7EB",
+    cardShadow: isDark ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.1)",
+    cardBorder: isDark ? "#2A2A2A" : "#E5E7EB",
 
-    // Tab bar - clean and focused
-    tabBarBackground: isDark ? "#000000" : "#FFFFFF",
-    tabBarBorder: isDark ? "#222222" : "#E5E7EB",
-    tabBarActive: "#000000",
-    tabBarInactive: isDark ? "#666666" : "#999999",
+    // Tab bar - cozy and focused
+    tabBarBackground: isDark ? "#0A0A0A" : "#FFFFFF",
+    tabBarBorder: isDark ? "#2A2A2A" : "#E5E7EB",
+    tabBarActive: isDark ? "#F5F5F5" : "#000000",
+    tabBarInactive: isDark ? "#606060" : "#999999",
 
-    // Buttons - strong and decisive
-    buttonPrimary: "#000000",
-    buttonSecondary: isDark ? "#111111" : "#F8F9FA",
-    buttonText: isDark ? "#FFFFFF" : "#000000",
+    // Buttons - strong presence
+    buttonPrimary: isDark ? "#F5F5F5" : "#000000",
+    buttonSecondary: isDark ? "#1A1A1A" : "#F8F9FA",
+    buttonText: isDark ? "#0A0A0A" : "#FFFFFF",
 
-    // Inputs - clean and minimal
-    inputBackground: isDark ? "#111111" : "#F8F9FA",
-    inputBorder: isDark ? "#222222" : "#E5E7EB",
-    placeholder: isDark ? "#555555" : "#999999",
+    // Inputs - subtle and clean
+    inputBackground: isDark ? "#141414" : "#F8F9FA",
+    inputBorder: isDark ? "#2A2A2A" : "#E5E7EB",
+    placeholder: isDark ? "#606060" : "#999999",
 
-    // Progress - Winter Arc focused
-    progressActive: "#000000",
-    progressPartial: isDark ? "#333333" : "#CCCCCC",
-    progressInactive: isDark ? "#1A1A1A" : "#F0F0F0",
+    // Progress - smooth gradients
+    progressActive: isDark ? "#F5F5F5" : "#000000",
+    progressPartial: isDark ? "#3A3A3A" : "#CCCCCC",
+    progressInactive: isDark ? "#1F1F1F" : "#F0F0F0",
 
     // Status bar
     statusBarStyle: isDark ? "light" : "dark",

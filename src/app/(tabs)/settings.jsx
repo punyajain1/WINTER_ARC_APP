@@ -36,6 +36,7 @@ import {
 import { useState, useCallback } from "react";
 import { useTheme } from "@/utils/theme";
 import { useColorScheme } from "react-native";
+import { useRouter } from "expo-router";
 import { distractionChecker } from "@/utils/distractionChecker";
 import { getUserProfile, saveUserProfile, clearAllData } from "@/utils/storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -52,6 +53,7 @@ export default function WinterArcSettings() {
   const { colors } = useTheme();
   const colorScheme = useColorScheme();
   const queryClient = useQueryClient();
+  const router = useRouter();
   
   // Fetch user profile for settings
   const { data: profile } = useQuery({
@@ -545,10 +547,15 @@ export default function WinterArcSettings() {
                     onPress: async () => {
                       try {
                         await clearAllData();
+                        await cancelAllNotifications();
                         queryClient.clear();
+                        
+                        // Navigate to home which will show "Start Winter Arc" screen
+                        router.replace("/(tabs)/home");
+                        
                         Alert.alert(
                           "Data Cleared",
-                          "All data has been reset. Restart the app to begin fresh.",
+                          "All data has been reset. Tap 'Start Winter Arc' to begin your journey.",
                         );
                       } catch (error) {
                         Alert.alert("Error", "Failed to clear data. Try again.");

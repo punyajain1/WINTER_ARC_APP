@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserProfile } from './storage';
 import { generateHarshReminder } from './ai';
 import Constants from 'expo-constants';
+import { getDistractionPatterns, isHighRiskTime } from './patternAnalytics';
 
 // Check if running in Expo Go
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -285,6 +286,9 @@ export async function initializeNotifications() {
       // Schedule weekly streak reminder on Mondays at 9 AM
       await scheduleWeeklyStreakReminder();
       
+      // Schedule pattern-based nudges
+      await schedulePatternBasedNudges();
+      
       console.log('✅ Notifications initialized');
       return true;
     }
@@ -294,4 +298,105 @@ export async function initializeNotifications() {
     console.warn('Failed to initialize notifications:', error.message);
     return false;
   }
+}
+
+// Schedule smart nudges based on user's distraction patterns
+export async function schedulePatternBasedNudges() {
+  if (isExpoGo) {
+    console.log('🧠 Pattern-based nudges scheduled (dev build required for actual notifications)');
+    return null;
+  }
+
+  try {
+    const patterns = await getDistractionPatterns();
+    
+    if (!patterns || patterns.totalEvents < 5) {
+      console.log('Not enough data for pattern-based nudges yet');
+      return null;
+    }
+
+    // Cancel existing pattern nudges
+    const key = 'pattern-nudge-ids';
+    const existing = await AsyncStorage.getItem(key);
+    if (existing) {
+      const ids = JSON.parse(existing);
+      for (const id of ids) {
+        await Notifications.cancelScheduledNotificationAsync(id);
+      }
+    }
+
+    const profile = await getUserProfile();
+    const peakHour = patterns.peakDistractionHour;
+    
+    // Schedule nudge 30 minutes before peak distraction time
+    const nudgeHour = peakHour === 0 ? 23 : peakHour - 1;
+    const nudgeMinute = 30;
+
+    const messages = [
+      `You usually lose focus around ${peakHour > 12 ? peakHour - 12 : peakHour}${peakHour >= 12 ? 'pm' : 'am'}. Stay locked in.`,
+      `High risk time approaching. Your biggest distraction: ${patterns.mostDistractingApp}. Don't slip.`,
+      `${peakHour > 12 ? peakHour - 12 : peakHour}${peakHour >= 12 ? 'pm' : 'am'} is when you usually break. Not today.`,
+      `Pattern alert: This is your weak hour. Prove yourself wrong.`,
+    ];
+
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '🧠 Pattern Alert',
+        body: messages[Math.floor(Math.random() * messages.length)],
+        data: { type: 'pattern-nudge' },
+        sound: true,
+      },
+      trigger: {
+        hour: nudgeHour,
+        minute: nudgeMinute,
+        repeats: true,
+      },
+    });
+
+    await AsyncStorage.setItem(key, JSON.stringify([notificationId]));
+    
+    console.log(`Pattern nudge scheduled for ${nudgeHour}:${nudgeMinute} (before peak at ${peakHour}:00)`);
+    return notificationId;
+  } catch (error) {
+    console.warn('Failed to schedule pattern nudges:', error.message);
+    return null;
+  }
+}
+
+// Send immediate nudge if user is in high-risk time
+export async function sendHighRiskNudge() {
+  if (isExpoGo) {
+    console.log('⚠️ High-risk nudge (dev build required for actual notifications)');
+    return null;
+  }
+
+  try {
+    const isHighRisk = await isHighRiskTime();
+    
+    if (!isHighRisk) {
+      return null;
+    }
+
+    const patterns = await getDistractionPatterns();
+    
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '⚠️ High Risk Time',
+        body: `You're in your danger zone. ${patterns.mostDistractingApp} can wait. Stay focused.`,
+        data: { type: 'high-risk-nudge' },
+        sound: true,
+      },
+      trigger: null, // Send immediately
+    });
+
+    return true;
+  } catch (error) {
+    console.warn('Failed to send high-risk nudge:', error.message);
+    return null;
+  }
+}
+
+// Update pattern nudges when patterns change
+export async function updatePatternNudges() {
+  await schedulePatternBasedNudges();
 }

@@ -34,6 +34,7 @@ import { format, subDays, parseISO } from "date-fns";
 import { LineChart, BarChart, ProgressChart } from "react-native-chart-kit";
 import { getCheckIns, getGoals, getStreak, getActivities } from "@/utils/storage";
 import { screenTimeMonitor } from "@/utils/screenTime";
+import { getDistractionPatterns, getPatternInsight } from "@/utils/patternAnalytics";
 
 const { width } = Dimensions.get("window");
 
@@ -75,6 +76,16 @@ export default function Analytics() {
     queryFn: async () => await screenTimeMonitor.getAppBreakdown(),
   });
 
+  const { data: distractionPatterns, refetch: refetchPatterns } = useQuery({
+    queryKey: ["distraction-patterns"],
+    queryFn: getDistractionPatterns,
+  });
+
+  const { data: patternInsight, refetch: refetchInsight } = useQuery({
+    queryKey: ["pattern-insight"],
+    queryFn: getPatternInsight,
+  });
+
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
@@ -83,6 +94,8 @@ export default function Analytics() {
       refetchStreak(),
       refetchScreenTime(),
       refetchAppBreakdown(),
+      refetchPatterns(),
+      refetchInsight(),
     ]);
     setRefreshing(false);
   };
@@ -137,7 +150,7 @@ export default function Analytics() {
   const StatCard = ({ icon: Icon, title, value, subtitle, trend }) => (
     <View
       style={{
-        backgroundColor: colors.surface,
+        backgroundColor: colors.cardBackground,
         borderRadius: 16,
         padding: 20,
         marginBottom: 16,
@@ -207,7 +220,7 @@ export default function Analytics() {
   const ChartCard = ({ title, children }) => (
     <View
       style={{
-        backgroundColor: colors.surface,
+        backgroundColor: colors.cardBackground,
         borderRadius: 16,
         padding: 16,
         marginBottom: 16,
@@ -300,6 +313,130 @@ export default function Analytics() {
           subtitle={`Week average: ${Math.floor((screenTimeStats?.weekAverage || 0) / 60)}h ${(screenTimeStats?.weekAverage || 0) % 60}m`}
           trend={screenTimeStats?.trend === "decreasing" ? "up" : screenTimeStats?.trend === "increasing" ? "down" : null}
         />
+
+        {/* Pattern Insights Card */}
+        {distractionPatterns && distractionPatterns.totalEvents >= 5 && (
+          <View
+            style={{
+              backgroundColor: colors.cardBackground,
+              borderRadius: 16,
+              padding: 20,
+              marginBottom: 20,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  backgroundColor: colors.warning + "20",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginRight: 12,
+                }}
+              >
+                <AlertTriangle size={24} color={colors.warning} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: colors.textPrimary,
+                    fontSize: 18,
+                    fontFamily: "Inter_600SemiBold",
+                  }}
+                >
+                  🧠 Pattern Analysis
+                </Text>
+              </View>
+            </View>
+            
+            <View
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 12,
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.textPrimary,
+                  fontSize: 14,
+                  fontFamily: "Inter_500Medium",
+                  lineHeight: 22,
+                }}
+              >
+                {patternInsight || "Analyzing your patterns..."}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: colors.surface,
+                  borderRadius: 8,
+                  padding: 12,
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: 11,
+                    fontFamily: "Inter_500Medium",
+                    marginBottom: 4,
+                  }}
+                >
+                  Peak Distraction
+                </Text>
+                <Text
+                  style={{
+                    color: colors.textPrimary,
+                    fontSize: 16,
+                    fontFamily: "Inter_700Bold",
+                  }}
+                >
+                  {distractionPatterns.peakDistractionHour > 12 
+                    ? `${distractionPatterns.peakDistractionHour - 12}pm` 
+                    : `${distractionPatterns.peakDistractionHour}am`}
+                </Text>
+              </View>
+
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: colors.surface,
+                  borderRadius: 8,
+                  padding: 12,
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: 11,
+                    fontFamily: "Inter_500Medium",
+                    marginBottom: 4,
+                  }}
+                >
+                  Top Distraction
+                </Text>
+                <Text
+                  style={{
+                    color: colors.textPrimary,
+                    fontSize: 16,
+                    fontFamily: "Inter_700Bold",
+                  }}
+                  numberOfLines={1}
+                >
+                  {distractionPatterns.mostDistractingApp}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Check-in Streak Chart */}
         {checkInData.length > 0 && (
