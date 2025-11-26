@@ -35,6 +35,7 @@ import { LineChart, BarChart, ProgressChart } from "react-native-chart-kit";
 import { getCheckIns, getGoals, getStreak, getActivities } from "@/utils/storage";
 import { screenTimeMonitor } from "@/utils/screenTime";
 import { getDistractionPatterns, getPatternInsight } from "@/utils/patternAnalytics";
+import { ScreenTimePermissionCard } from "@/components/ScreenTimePermissionCard";
 
 const { width } = Dimensions.get("window");
 
@@ -280,6 +281,9 @@ export default function Analytics() {
             Track your Winter Arc progress
           </Text>
         </View>
+
+        {/* Screen Time Permission Card */}
+        <ScreenTimePermissionCard />
 
         {/* Key Metrics */}
         <StatCard

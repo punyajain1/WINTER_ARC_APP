@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { getUserProfile } from './storage';
+import { AndroidUsageStats } from './androidUsageStats';
 
 const SCREEN_TIME_KEY = '@winter_arc_screen_time';
 const APP_USAGE_KEY = '@winter_arc_app_usage';
@@ -78,10 +79,36 @@ class ScreenTimeMonitor {
 
   async getTodayUsage() {
     try {
+      // Try to get real Android usage stats first
+      if (Platform.OS === 'android') {
+        try {
+          const hasPermission = await AndroidUsageStats.hasPermission();
+          if (hasPermission) {
+            const appsUsage = await AndroidUsageStats.getTodayAllAppsUsage();
+            
+            // Store in AsyncStorage for consistency
+            const today = new Date().toISOString().split('T')[0];
+            await AsyncStorage.setItem(
+              `${APP_USAGE_KEY}_${today}`,
+              JSON.stringify(appsUsage)
+            );
+            
+            console.log('📊 Android usage stats retrieved:', Object.keys(appsUsage).length, 'apps');
+            return appsUsage;
+          } else {
+            console.log('⚠️ Usage stats permission not granted, using tracked data');
+          }
+        } catch (e) {
+          console.warn('Failed to get Android usage stats, falling back to tracked data:', e);
+        }
+      }
+      
+      // Fallback to manual tracking
       const today = new Date().toISOString().split('T')[0];
       const data = await AsyncStorage.getItem(`${APP_USAGE_KEY}_${today}`);
       return data ? JSON.parse(data) : {};
     } catch (error) {
+      console.error('Failed to get today usage:', error);
       return {};
     }
   }

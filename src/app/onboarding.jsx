@@ -107,10 +107,11 @@ export default function WinterArcOnboarding() {
         completedAt: new Date().toISOString(),
       };
       
-      await saveOnboardingData(completeData);
-      
+      const onboardingSaved = await saveOnboardingData(completeData);
+      console.log('✅ Onboarding data saved:', onboardingSaved);
+
       // Save user profile
-      await saveUserProfile({
+      const profileSaved = await saveUserProfile({
         biggestDream: onboardingData.biggestDream,
         biggestSetback: onboardingData.biggestSetback,
         emotionalBreakdown: onboardingData.emotionalBreakdown,
@@ -125,21 +126,24 @@ export default function WinterArcOnboarding() {
         accountabilityLevel: onboardingData.accountabilityLevel,
         deadline: onboardingData.deadline,
       });
+      console.log('✅ User profile saved:', profileSaved);
       
       // Create initial goal if primary goal exists
       if (onboardingData.primaryGoal) {
-        await addGoal({
+        const goalSaved = await addGoal({
           title: onboardingData.primaryGoal,
           deadline: onboardingData.deadline,
           progress: 0,
         });
+        console.log('✅ Primary goal saved:', goalSaved?.id);
       }
       
-      console.log("Onboarding completed and saved to AsyncStorage");
+      console.log("✅ Onboarding completed and saved to AsyncStorage");
       
       // Update the query cache to mark onboarding as complete
       queryClient.setQueryData(["onboarding-status"], { onboarded: true });
       
+      console.log('🏁 Navigating to home screen...');
       // Navigate to main app
       router.replace("/(tabs)/home");
     } catch (error) {

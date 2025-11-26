@@ -3,7 +3,11 @@
   "main": "index",
   "version": "1.0.0",
   "scripts": {
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "build:dev": "eas build --profile development --platform android",
+    "build:preview": "eas build --profile preview --platform android",
+    "build:production": "eas build --profile production --platform android",
+    "build:run": "eas build:run --platform android --latest"
   },
   "dependencies": {
     "@expo-google-fonts/dev": "^0.4.7",
@@ -33,6 +37,7 @@
     "expo-clipboard": "~8.0.7",
     "expo-constants": "~18.0.10",
     "expo-contacts": "~15.0.10",
+    "expo-dev-client": "~6.0.18",
     "expo-device": "~8.0.9",
     "expo-document-picker": "~14.0.7",
     "expo-file-system": "~19.0.19",

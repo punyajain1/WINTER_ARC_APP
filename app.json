@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Winter Arc",
+    "name": "WIN_ARC",
     "slug": "winter-arc",
     "scheme": "winterarc",
     "version": "1.0.0",
@@ -22,7 +22,8 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.PACKAGE_USAGE_STATS"
       ],
       "package": "com.winterarc.app"
     },
@@ -60,6 +61,7 @@
       "expo-asset",
       "expo-secure-store",
       "expo-web-browser",
+      "./plugins/withUsageStats",
       [
         "expo-notifications",
         {
