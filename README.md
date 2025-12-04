@@ -152,16 +152,6 @@ ai-backend/
 - Streak data with photos
 - Recent activities log
 
-## 🚀 Next Steps
-
-1. **Test Current Build**: All features except notifications work in Expo Go
-2. **Create Development Build**: Follow `NOTIFICATIONS_SETUP.md` for full functionality
-3. **Deploy AI Backend**: Deploy to Vercel/Railway for production
-4. **Optional Enhancements**:
-   - Implement screen time monitoring
-   - Build analytics dashboard with charts
-   - Add social accountability features
-
 ## 📝 Environment Variables
 
 Create `.env` in `apps/mobile`:
@@ -174,18 +164,6 @@ EXPO_PUBLIC_AI_BACKEND_URL=https://winarcbe-production.up.railway.app
 ```
 
 **Note**: The app works offline with fallback quotes. AI features are optional.
-
-## 🐛 Known Issues
-
-1. **Notifications Error in Expo Go**: Expected - requires development build
-2. **Package Version Warnings**: Safe to ignore, app works correctly
-3. **Missing notification-icon.png**: Optional, app works without it
-
-## 📖 Documentation
-
-- `NOTIFICATIONS_SETUP.md`: Complete guide for push notifications setup
-- `README.md`: This file - project overview
-- Code comments: Extensive inline documentation
 
 ## 🎯 Winter Arc Philosophy
 
